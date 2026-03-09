@@ -7,10 +7,12 @@ function normalizeTask(task) {
 function isN8nInstallTask(task) {
     const normalized = normalizeTask(task);
     return (
-        /\binstall\s+n8n\b/.test(normalized)
-        || /\bsetup\s+n8n\b/.test(normalized)
+        /\b(?:install|instll|instal|intall|insatll|instlal|intsall|istall)\s+n8n\b/.test(normalized)
+        || /\b(?:setup|set\s*up|seutp|steup)\s+n8n\b/.test(normalized)
+        || /\bn8n\s+(?:install|setup|set\s*up)\b/.test(normalized)
         || /ثبت\s*n8n/.test(normalized)
         || /شغل\s*n8n/.test(normalized)
+        || /نزل\s*n8n/.test(normalized)
     );
 }
 
