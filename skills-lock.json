@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "skills": {
+    "cron": {
+      "source": "chaterm/terminal-skills",
+      "sourceType": "github",
+      "computedHash": "374e08aab7c38effc16afd36c726a0c8ca410e34cfa59e431b1ec30c4a5e71ac"
+    },
+    "nodejs-development": {
+      "source": "manutej/luxor-claude-marketplace",
+      "sourceType": "github",
+      "computedHash": "0d82537f86a031eb1e8d293aa9183f5ef7a2566e52fb670a8a40dde988d66b91"
+    },
+    "system-admin": {
+      "source": "chaterm/terminal-skills",
+      "sourceType": "github",
+      "computedHash": "ac5897fca68e0dcc960449c34d6bf30514c7594a1da4b3a5c465f8f85c241d16"
+    },
+    "terminaluse": {
+      "source": "terminaluse/agent-skills",
+      "sourceType": "github",
+      "computedHash": "3e0be0c8ee14ef904ada3e2b751f44cc9909a7b17cadf158610e7987ad17badc"
+    }
+  }
+}
