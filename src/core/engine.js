@@ -5,6 +5,7 @@ import ora from 'ora';
 
 import { GeminiReasoner } from './ai.js';
 import { runAgentLoop } from './agent_loop.js';
+import { buildOfflineFallbackPlan, shouldUseOfflineFallback } from './local_fallback.js';
 import { getMetricsSnapshot, recordActionMetric, recordTaskMetric } from './metrics.js';
 import { analyzeWorkspace } from './project_analyzer.js';
 import { createReflection } from './self_reflection.js';
@@ -455,12 +456,35 @@ export class AgentEngine {
                     return { explanation: response.explanation, plan };
                 }
 
-                const outcome = await runAgentLoop({
-                    task,
-                    engine: this,
-                    reasoner: this.getReasoner(),
-                    options,
-                });
+                let outcome;
+                try {
+                    outcome = await runAgentLoop({
+                        task,
+                        engine: this,
+                        reasoner: this.getReasoner(),
+                        options,
+                    });
+                } catch (error) {
+                    if (!shouldUseOfflineFallback(error)) {
+                        throw error;
+                    }
+
+                    const fallbackPlan = buildOfflineFallbackPlan(task);
+                    if (!fallbackPlan) {
+                        throw error;
+                    }
+
+                    logger.warn(`AI reasoning unavailable, switching to offline fallback: ${error.message}`);
+                    const fallbackResults = await this.executePlan(fallbackPlan, options);
+                    const failedStep = fallbackResults.find((entry) => entry.result.success === false);
+                    outcome = {
+                        success: !failedStep,
+                        summary: failedStep
+                            ? `Fallback execution failed at ${failedStep.action.action}.`
+                            : 'Fallback execution completed successfully.',
+                        actions: fallbackResults,
+                    };
+                }
 
                 const durationMs = Date.now() - startedAt;
                 await this.recordTaskOutcome(task, {
