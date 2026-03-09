@@ -474,7 +474,7 @@ export class AgentEngine {
                         throw error;
                     }
 
-                    logger.warn(`AI reasoning unavailable, switching to offline fallback: ${error.message}`);
+                    logger.warn('AI unavailable (quota/network). Using offline fallback.');
                     const fallbackResults = await this.executePlan(fallbackPlan, options);
                     const failedStep = fallbackResults.find((entry) => entry.result.success === false);
                     outcome = {
