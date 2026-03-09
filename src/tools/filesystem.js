@@ -185,5 +185,7 @@ export async function editFile(filePath, operation, params = {}, options = {}) {
         operation: normalizedOperation,
         changed: next !== current,
         bytes: size,
+        before: (params.target || '').slice(0, 800),
+        after: (params.replacement || params.content || '').slice(0, 800),
     };
 }

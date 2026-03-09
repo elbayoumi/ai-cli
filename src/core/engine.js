@@ -93,20 +93,40 @@ function renderResult(action, result) {
             logger.info(`Exit code: ${result.exitCode ?? 0}`);
             logger.info(`Duration: ${result.durationMs ?? 0}ms`);
             break;
+
         case 'filesystem.read_file':
+            renderFileHeader('READ', result.path, result.bytes);
             logger.raw(result.content);
             break;
+
         case 'filesystem.list_files':
             for (const entry of result.entries || []) {
-                logger.raw(`- [${entry.type}] ${entry.path}`);
+                const icon = entry.type === 'directory' ? '📁' : (entry.type === 'symlink' ? '🔗' : '📄');
+                const size = entry.size != null ? chalk.gray(` (${formatBytes(entry.size)})`) : '';
+                logger.raw(`  ${icon} ${entry.path}${size}`);
+            }
+            logger.info(`${(result.entries || []).length} entries`);
+            break;
+
+        case 'filesystem.write_file':
+            renderFileHeader('WRITE', result.path, result.bytes);
+            if (action.content) {
+                renderContentPreview(action.content);
+            }
+            logger.success(`✔ Written ${formatBytes(result.bytes)} → ${result.path}`);
+            break;
+
+        case 'filesystem.edit_file':
+            renderFileHeader('EDIT', result.path, result.bytes);
+            logger.info(`Operation: ${chalk.cyan(result.operation)}`);
+            if (result.changed) {
+                renderDiffView(result.operation, result.before, result.after);
+                logger.success(`✔ Changes applied to ${result.path}`);
+            } else {
+                logger.warn('No changes — file content was already up to date.');
             }
             break;
-        case 'filesystem.write_file':
-            logger.success(`Wrote ${result.bytes} bytes to ${result.path}`);
-            break;
-        case 'filesystem.edit_file':
-            logger.success(`Applied ${result.operation} to ${result.path}`);
-            break;
+
         case 'project.analyze':
             logger.raw(JSON.stringify(result.analysis, null, 2));
             break;
@@ -141,6 +161,82 @@ function renderResult(action, result) {
     }
 
     logger.divider();
+}
+
+// ── Pretty file rendering helpers ───────────────────────────────────────────
+
+function formatBytes(bytes) {
+    if (bytes == null) return '?';
+    if (bytes < 1024) return `${bytes}B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+function renderFileHeader(label, filePath, bytes) {
+    const name = filePath ? filePath.split('/').pop() : 'unknown';
+    const dir = filePath ? filePath.replace(/\/[^/]+$/, '/') : '';
+    const sizeStr = bytes != null ? chalk.gray(` (${formatBytes(bytes)})`) : '';
+    console.log(
+        chalk.bgHex('#1e1e2e').hex('#cdd6f4')(` ${label} `) +
+        ' ' +
+        chalk.gray(dir) + chalk.white.bold(name) +
+        sizeStr
+    );
+    console.log('');
+}
+
+function renderDiffView(operation, before, after) {
+    const ops = {
+        replace_block: { beforeLabel: '─ REMOVED', afterLabel: '+ REPLACED' },
+        append: { beforeLabel: null, afterLabel: '+ APPENDED' },
+        prepend: { beforeLabel: null, afterLabel: '+ PREPENDED' },
+        insert_after: { beforeLabel: '  ANCHOR', afterLabel: '+ INSERTED AFTER' },
+        insert_before: { beforeLabel: '  ANCHOR', afterLabel: '+ INSERTED BEFORE' },
+    };
+
+    const labels = ops[operation] || { beforeLabel: '─ BEFORE', afterLabel: '+ AFTER' };
+
+    if (before && labels.beforeLabel) {
+        const tag = labels.beforeLabel.startsWith('─')
+            ? chalk.red(labels.beforeLabel)
+            : chalk.gray(labels.beforeLabel);
+        console.log(tag);
+        const lines = before.split('\n');
+        const color = labels.beforeLabel.startsWith('─') ? chalk.red : chalk.gray;
+        for (const line of lines.slice(0, 15)) {
+            console.log(color(`  ${line}`));
+        }
+        if (lines.length > 15) {
+            console.log(chalk.gray(`  ... (${lines.length - 15} more lines)`));
+        }
+        console.log('');
+    }
+
+    if (after) {
+        console.log(chalk.green(labels.afterLabel));
+        const lines = after.split('\n');
+        for (const line of lines.slice(0, 20)) {
+            console.log(chalk.green(`  ${line}`));
+        }
+        if (lines.length > 20) {
+            console.log(chalk.gray(`  ... (${lines.length - 20} more lines)`));
+        }
+        console.log('');
+    }
+}
+
+function renderContentPreview(content) {
+    if (!content || typeof content !== 'string') return;
+    const lines = content.split('\n');
+    const preview = lines.slice(0, 15);
+
+    for (const line of preview) {
+        console.log(chalk.hex('#89b4fa')(`  ${line}`));
+    }
+    if (lines.length > 15) {
+        console.log(chalk.gray(`  ... (${lines.length - 15} more lines)`));
+    }
+    console.log('');
 }
 
 function displayAction(action, permissionLevel) {
